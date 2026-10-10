@@ -1,6 +1,6 @@
 [package]
 name = "burnrate-agent"
-version = "0.6.0"
+version = "0.7.0"
 edition = "2024"
 authors = ["Ronit Gupta <ronitgupta138@gmail.com>"]
 description = "Terminal HUD, Hard Spend Caps & Prompt-Cache Guard for AI Coding Agents in Rust"
