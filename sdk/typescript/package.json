@@ -1,6 +1,6 @@
 {
   "name": "burnrate-agent",
-  "version": "0.5.0",
+  "version": "1.0.0",
   "description": "Terminal HUD, Hard Spend Caps & Cache Guard for Coding Agents",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

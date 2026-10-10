@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "burnrate-agent"
-version = "0.5.0"
+version = "1.0.0"
 description = "Terminal HUD, Hard Spend Caps & Cache Guard for Coding Agents"
 readme = "README.md"
 authors = [{ name = "Ronit Gupta", email = "ronitgupta138@gmail.com" }]

@@ -12,10 +12,10 @@
 ### **Terminal HUD, Hard Spend Caps & Cache Guard for Coding Agents**
 
 [![GitHub Stars](https://img.shields.io/github/stars/ronitgupta138/burnrate?style=flat-square&color=0891b2&labelColor=0a0b0e)](https://github.com/ronitgupta138/burnrate/stargazers)
-[![Crates.io](https://img.shields.io/badge/crates.io-v0.5.0-0891b2?style=flat-square&labelColor=0a0b0e)](https://crates.io/crates/burnrate-agent)
+[![Crates.io](https://img.shields.io/badge/crates.io-v1.0.0-0891b2?style=flat-square&labelColor=0a0b0e)](https://crates.io/crates/burnrate-agent)
 [![License: MIT](https://img.shields.io/badge/License-MIT-0891b2?style=flat-square&labelColor=0a0b0e)](LICENSE)
 [![Rust: 1.80+](https://img.shields.io/badge/Rust-1.80+-0891b2?style=flat-square&labelColor=0a0b0e)](https://www.rust-lang.org)
-[![Build Status](https://img.shields.io/badge/Tests-8%2F8%20Passing-0891b2?style=flat-square&labelColor=0a0b0e)](#-verification--benchmarks)
+[![Build Status](https://img.shields.io/badge/Tests-12%2F12%20Passing-0891b2?style=flat-square&labelColor=0a0b0e)](#-verification--benchmarks)
 [![Views](https://hits.sh/github.com/ronitgupta138/burnrate.svg?style=flat-square&label=Views&color=0891b2&labelColor=0a0b0e)](https://hits.sh/github.com/ronitgupta138/burnrate/)
 [![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4-ea4aaa?style=flat-square&labelColor=0a0b0e)](https://github.com/sponsors/ronitgupta138)
 
@@ -144,7 +144,7 @@ cargo test
 ```
 
 ```
-running 8 tests
+running 12 tests
 test test_pricing_calculation ... ok
 test test_budget_governor_hard_spend_breaker ... ok
 test test_prompt_cache_invalidation_linter ... ok
@@ -154,8 +154,12 @@ test test_mcp_initialize_and_tool_list ... ok
 test test_mcp_call_status_tool ... ok
 test test_streaming_token_counter_ingestion ... ok
 test test_context_window_guard_thresholds ... ok
+test test_model_cost_router_downgrade_on_low_budget ... ok
+test test_team_budget_pool_multi_agent_partitioning ... ok
+test test_velocity_brake_threshold_enforcement ... ok
+test test_prometheus_metrics_export ... ok
 
-test result: ok. 8 passed; 0 failed; 0 ignored; finished in 0.00s
+test result: ok. 12 passed; 0 failed; 0 ignored; finished in 0.00s
 ```
 
 ---
