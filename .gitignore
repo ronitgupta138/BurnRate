@@ -1,0 +1,6 @@
+/target
+*.tmp
+*.bak
+dist/
+build/
+.env
