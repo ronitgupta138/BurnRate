@@ -1,0 +1,22 @@
+{
+  "name": "burnrate-agent",
+  "version": "0.5.0",
+  "description": "Terminal HUD, Hard Spend Caps & Cache Guard for Coding Agents",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "keywords": [
+    "ai-agents",
+    "finops",
+    "prompt-caching",
+    "budget-guard"
+  ],
+  "author": "Ronit Gupta <ronitgupta138@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ronitgupta138/burnrate.git"
+  }
+}
