@@ -12,7 +12,7 @@
 ### **Terminal HUD, Hard Spend Caps & Cache Guard for Coding Agents**
 
 [![GitHub Stars](https://img.shields.io/github/stars/ronitgupta138/burnrate?style=flat-square&color=0891b2&labelColor=0a0b0e)](https://github.com/ronitgupta138/burnrate/stargazers)
-[![Crates.io](https://img.shields.io/badge/crates.io-v0.1.0-0891b2?style=flat-square&labelColor=0a0b0e)](https://crates.io/crates/burnrate)
+[![Crates.io](https://img.shields.io/badge/crates.io-v0.1.0-0891b2?style=flat-square&labelColor=0a0b0e)](https://crates.io/crates/burnrate-agent)
 [![License: MIT](https://img.shields.io/badge/License-MIT-0891b2?style=flat-square&labelColor=0a0b0e)](LICENSE)
 [![Rust: 1.80+](https://img.shields.io/badge/Rust-1.80+-0891b2?style=flat-square&labelColor=0a0b0e)](https://www.rust-lang.org)
 [![Build Status](https://img.shields.io/badge/Tests-5%2F5%20Passing-0891b2?style=flat-square&labelColor=0a0b0e)](#-verification--benchmarks)
@@ -90,7 +90,7 @@ Renders directly to stderr with live cost consumption, token burn rates, and pro
 
 ### 1. Installation
 ```bash
-cargo install burnrate
+cargo install burnrate-agent
 # Or build from source:
 git clone https://github.com/ronitgupta138/burnrate.git
 cd burnrate && cargo build --release
