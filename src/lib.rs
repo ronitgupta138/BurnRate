@@ -10,3 +10,4 @@ pub mod streaming;
 pub mod context_guard;
 pub mod router;
 pub mod team;
+pub mod velocity;
