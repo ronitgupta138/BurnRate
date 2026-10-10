@@ -27,10 +27,20 @@ pub fn create_proxy_router(state: Arc<ProxyState>) -> Router {
     Router::new()
         .route("/health", get(health_handler))
         .route("/status", get(status_handler))
+        .route("/metrics", get(metrics_handler))
         .route("/v1/messages", post(proxy_messages_handler))
         .route("/v1/chat/completions", post(proxy_messages_handler))
         .layer(cors)
         .with_state(state)
+}
+
+async fn metrics_handler(State(state): State<Arc<ProxyState>>) -> impl IntoResponse {
+    let status = state.governor.status();
+    let text = crate::metrics::MetricsExporter::render_prometheus(&status);
+    (
+        [(axum::http::header::CONTENT_TYPE, "text/plain; version=0.0.4")],
+        text,
+    )
 }
 
 async fn health_handler() -> impl IntoResponse {
