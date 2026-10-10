@@ -64,6 +64,13 @@ enum Commands {
 
     /// Render sample terminal HUD status bar
     Hud,
+
+    /// Run native Model Context Protocol (MCP) JSON-RPC 2.0 stdio server
+    Mcp {
+        /// Maximum budget spend in USD (default: 2.00)
+        #[arg(long, default_value_t = 2.00)]
+        max_spend: f64,
+    },
 }
 
 #[tokio::main]
@@ -151,6 +158,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             gov.record_turn(0.42, 18400, 1200, 16900);
             let status = gov.status();
             TerminalHud::display(&status);
+        }
+
+        Commands::Mcp { max_spend } => {
+            let mcp = burnrate::mcp::McpServer::new(max_spend);
+            let stdin = std::io::stdin();
+            let stdout = std::io::stdout();
+            mcp.run_loop(stdin.lock(), stdout.lock())?;
         }
     }
 
