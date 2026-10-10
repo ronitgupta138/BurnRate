@@ -6,3 +6,4 @@ pub mod cache_linter;
 pub mod hud;
 pub mod proxy;
 pub mod mcp;
+pub mod streaming;
