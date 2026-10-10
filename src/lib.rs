@@ -8,3 +8,4 @@ pub mod proxy;
 pub mod mcp;
 pub mod streaming;
 pub mod context_guard;
+pub mod router;
