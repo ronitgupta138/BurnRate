@@ -23,6 +23,8 @@ pub struct ProxyState {
     pub cache_engine: Arc<crate::cache_engine::CacheEngine>,
     pub fallback_engine: Arc<crate::fallback::LocalFallbackEngine>,
     pub swarm_pool: Arc<crate::team::TeamBudgetPool>,
+    pub policy_engine: Arc<crate::policy::PolicyEngine>,
+    pub vault: Arc<crate::vault::TokenVault>,
 }
 
 impl ProxyState {
@@ -37,6 +39,8 @@ impl ProxyState {
             cache_engine: Arc::new(crate::cache_engine::CacheEngine::default()),
             fallback_engine: Arc::new(crate::fallback::LocalFallbackEngine::default()),
             swarm_pool: Arc::new(crate::team::TeamBudgetPool::new(max_pool)),
+            policy_engine: Arc::new(crate::policy::PolicyEngine::default()),
+            vault: Arc::new(crate::vault::TokenVault::new()),
         }
     }
 
@@ -55,6 +59,8 @@ impl ProxyState {
             cache_engine: Arc::new(crate::cache_engine::CacheEngine::default()),
             fallback_engine: Arc::new(crate::fallback::LocalFallbackEngine::default()),
             swarm_pool: Arc::new(crate::team::TeamBudgetPool::new(max_pool)),
+            policy_engine: Arc::new(crate::policy::PolicyEngine::default()),
+            vault: Arc::new(crate::vault::TokenVault::new()),
         }
     }
 
@@ -74,6 +80,8 @@ impl ProxyState {
             cache_engine: Arc::new(crate::cache_engine::CacheEngine::default()),
             fallback_engine: Arc::new(crate::fallback::LocalFallbackEngine::default()),
             swarm_pool: Arc::new(crate::team::TeamBudgetPool::new(max_pool)),
+            policy_engine: Arc::new(crate::policy::PolicyEngine::default()),
+            vault: Arc::new(crate::vault::TokenVault::new()),
         }
     }
 }
@@ -88,6 +96,9 @@ pub fn create_proxy_router(state: Arc<ProxyState>) -> Router {
         .route("/health", get(health_handler))
         .route("/status", get(status_handler))
         .route("/metrics", get(metrics_handler))
+        .route("/ui", get(crate::web::ui_handler))
+        .route("/api/swarm", get(crate::web::api_swarm_handler))
+        .route("/api/ledger", get(crate::web::api_ledger_handler))
         .route("/v1/messages", post(proxy_messages_handler))
         .route("/v1/chat/completions", post(proxy_messages_handler))
         .layer(cors)
@@ -240,6 +251,24 @@ async fn proxy_messages_handler(
         pricing.calculate_cost(input_tokens, output_tokens, cache_read_tokens, cache_write_tokens)
     };
 
+    // Declarative Policy Engine Evaluation
+    let verdict = state.policy_engine.evaluate(
+        model_name,
+        input_tokens,
+        cost,
+        status_pre.total_spent_usd,
+        status_pre.max_spend_usd,
+    );
+    match verdict {
+        crate::policy::PolicyVerdict::Denied(reason) => {
+            return Err((StatusCode::FORBIDDEN, format!("burnrate: {}", reason)));
+        }
+        crate::policy::PolicyVerdict::Warn(reason) => {
+            eprintln!("⚠️ [burnrate Policy Warning] {}", reason);
+        }
+        crate::policy::PolicyVerdict::Allowed => {}
+    }
+
     let mut swarm_exhausted = false;
     if let Some(ref agent_id) = agent_id_opt {
         let (agent_ex, pool_ex) = state.swarm_pool.record_spend_with_role(agent_id, agent_role, cost);
@@ -301,6 +330,10 @@ async fn proxy_messages_handler(
             axum::http::HeaderValue::from_static("true"),
         );
     }
+    response_headers.insert(
+        axum::http::HeaderName::from_static("x-burnrate-kernel-version"),
+        axum::http::HeaderValue::from_static("2.0.0"),
+    );
     #[allow(clippy::collapsible_if)]
     if let Some(ref agent_id) = agent_id_opt {
         if let Some(q) = state.swarm_pool.get_agent_quota(agent_id) {

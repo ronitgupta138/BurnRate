@@ -18,3 +18,6 @@ pub mod config;
 pub mod cache_engine;
 pub mod adapter;
 pub mod fallback;
+pub mod policy;
+pub mod vault;
+pub mod web;

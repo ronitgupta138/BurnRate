@@ -16,7 +16,7 @@ use std::sync::Arc;
 #[command(
     name = "burnrate",
     author = "Ronit Gupta <ronitgupta138@gmail.com>",
-    version = "1.5.0",
+    version = "2.0.0",
     about = "Terminal HUD, Hard Spend Caps & Cache Guard for Coding Agents"
 )]
 struct Cli {
@@ -134,6 +134,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "│".cyan(),
                 "Proxy Port".dimmed(),
                 format!("http://{}:{}/v1", host, port).green().bold(),
+                "│".cyan()
+            );
+            println!(
+                "{}  {: <14} :: {: <50} {}",
+                "│".cyan(),
+                "Web Dashboard".dimmed(),
+                format!("http://{}:{}/ui", host, port).cyan().bold(),
                 "│".cyan()
             );
             println!(
