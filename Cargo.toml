@@ -1,6 +1,6 @@
 [package]
 name = "burnrate-agent"
-version = "1.0.0"
+version = "1.1.0"
 edition = "2024"
 authors = ["Ronit Gupta <ronitgupta138@gmail.com>"]
 description = "Terminal HUD, Hard Spend Caps & Prompt-Cache Guard for AI Coding Agents in Rust"
@@ -21,6 +21,7 @@ axum = { version = "0.7", features = ["macros"] }
 tower-http = { version = "0.5", features = ["cors", "trace"] }
 tower = { version = "0.4", features = ["util"] }
 http-body-util = "0.1"
+regex = "1.13.1"
 
 [[bin]]
 name = "burnrate"

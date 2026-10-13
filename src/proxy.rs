@@ -4,6 +4,7 @@ use crate::budget::BudgetGovernor;
 use crate::cache_linter::PromptCacheLinter;
 use crate::hud::TerminalHud;
 use crate::pricing::PricingRegistry;
+use crate::secret_guard::SecretGuard;
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
@@ -16,6 +17,29 @@ use tower_http::cors::{Any, CorsLayer};
 pub struct ProxyState {
     pub governor: Arc<BudgetGovernor>,
     pub linter: Arc<PromptCacheLinter>,
+    pub secret_guard: Arc<SecretGuard>,
+}
+
+impl ProxyState {
+    pub fn new(governor: Arc<BudgetGovernor>, linter: Arc<PromptCacheLinter>) -> Self {
+        Self {
+            governor,
+            linter,
+            secret_guard: Arc::new(SecretGuard::new()),
+        }
+    }
+
+    pub fn with_secret_guard(
+        governor: Arc<BudgetGovernor>,
+        linter: Arc<PromptCacheLinter>,
+        secret_guard: Arc<SecretGuard>,
+    ) -> Self {
+        Self {
+            governor,
+            linter,
+            secret_guard,
+        }
+    }
 }
 
 pub fn create_proxy_router(state: Arc<ProxyState>) -> Router {
@@ -72,13 +96,30 @@ async fn proxy_messages_handler(
         ));
     }
 
+    // Intercept and redact secrets from outbound prompt payload
+    let (effective_body, body_str, redacted_count) = {
+        let (sanitized_body_str, count) = {
+            let raw_body_str = String::from_utf8_lossy(&body);
+            state.secret_guard.redact(&raw_body_str)
+        };
+        if count > 0 {
+            eprintln!(
+                "⚠️ [burnrate] Intercepted and redacted {} secret(s) from outbound prompt payload",
+                count
+            );
+            (axum::body::Bytes::from(sanitized_body_str.clone()), sanitized_body_str, count)
+        } else {
+            let owned_str = String::from_utf8_lossy(&body).into_owned();
+            (body, owned_str, 0)
+        }
+    };
+
     // 2. Inspect prompt for cache invalidations
-    if let Some(alert) = state.linter.inspect_prompt(&body) {
+    if let Some(alert) = state.linter.inspect_prompt(&effective_body) {
         eprintln!("⚠️  [burnrate Alert] {}", alert.message);
     }
 
     // Parse model name from body or default
-    let body_str = String::from_utf8_lossy(&body);
     let model_name = if body_str.contains("opus") {
         "claude-opus"
     } else if body_str.contains("sonnet") {
@@ -90,7 +131,7 @@ async fn proxy_messages_handler(
     let pricing = PricingRegistry::lookup(model_name);
 
     // Simulated turn consumption metrics
-    let input_tokens = (body.len() / 4).max(50) as u64;
+    let input_tokens = (effective_body.len() / 4).max(50) as u64;
     let output_tokens = 120u64;
     let cache_read_tokens = (input_tokens as f64 * 0.8) as u64;
     let cache_write_tokens = (input_tokens as f64 * 0.2) as u64;
@@ -111,16 +152,27 @@ async fn proxy_messages_handler(
         ));
     }
 
-    Ok(Json(json!({
-        "id": "msg_simulated",
-        "type": "message",
-        "role": "assistant",
-        "content": [{ "type": "text", "text": "burnrate proxy forward simulated response" }],
-        "usage": {
-            "input_tokens": input_tokens,
-            "output_tokens": output_tokens,
-            "cache_read_input_tokens": cache_read_tokens,
-            "cache_creation_input_tokens": cache_write_tokens
-        }
-    })))
+    let mut response_headers = axum::http::HeaderMap::new();
+    if redacted_count > 0 {
+        response_headers.insert(
+            axum::http::HeaderName::from_static("x-burnrate-secrets-redacted"),
+            axum::http::HeaderValue::from(redacted_count),
+        );
+    }
+
+    Ok((
+        response_headers,
+        Json(json!({
+            "id": "msg_simulated",
+            "type": "message",
+            "role": "assistant",
+            "content": [{ "type": "text", "text": "burnrate proxy forward simulated response" }],
+            "usage": {
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "cache_read_input_tokens": cache_read_tokens,
+                "cache_creation_input_tokens": cache_write_tokens
+            }
+        })),
+    ))
 }

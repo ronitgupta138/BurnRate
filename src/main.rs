@@ -5,6 +5,7 @@ use burnrate::cache_linter::PromptCacheLinter;
 use burnrate::hud::TerminalHud;
 use burnrate::pricing::PricingRegistry;
 use burnrate::proxy::{create_proxy_router, ProxyState};
+use burnrate::secret_guard::SecretGuard;
 use clap::{Parser, Subcommand};
 use colored::Colorize;
 use std::net::SocketAddr;
@@ -15,7 +16,7 @@ use std::sync::Arc;
 #[command(
     name = "burnrate",
     author = "Ronit Gupta <ronitgupta138@gmail.com>",
-    version = "1.0.0",
+    version = "1.1.0",
     about = "Terminal HUD, Hard Spend Caps & Cache Guard for Coding Agents"
 )]
 struct Cli {
@@ -82,7 +83,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let addr: SocketAddr = format!("{}:{}", host, port).parse()?;
             let governor = Arc::new(BudgetGovernor::new(max_spend));
             let linter = Arc::new(PromptCacheLinter::new());
-            let state = Arc::new(ProxyState { governor, linter });
+            let secret_guard = Arc::new(SecretGuard::new());
+            let state = Arc::new(ProxyState { governor, linter, secret_guard });
 
             let app = create_proxy_router(state);
 
