@@ -22,10 +22,12 @@ pub struct ProxyState {
     pub context_guard: Arc<crate::context_guard::ContextWindowGuard>,
     pub cache_engine: Arc<crate::cache_engine::CacheEngine>,
     pub fallback_engine: Arc<crate::fallback::LocalFallbackEngine>,
+    pub swarm_pool: Arc<crate::team::TeamBudgetPool>,
 }
 
 impl ProxyState {
     pub fn new(governor: Arc<BudgetGovernor>, linter: Arc<PromptCacheLinter>) -> Self {
+        let max_pool = governor.status().max_spend_usd;
         Self {
             governor,
             linter,
@@ -34,6 +36,7 @@ impl ProxyState {
             context_guard: Arc::new(crate::context_guard::ContextWindowGuard::default()),
             cache_engine: Arc::new(crate::cache_engine::CacheEngine::default()),
             fallback_engine: Arc::new(crate::fallback::LocalFallbackEngine::default()),
+            swarm_pool: Arc::new(crate::team::TeamBudgetPool::new(max_pool)),
         }
     }
 
@@ -42,6 +45,7 @@ impl ProxyState {
         linter: Arc<PromptCacheLinter>,
         secret_guard: Arc<SecretGuard>,
     ) -> Self {
+        let max_pool = governor.status().max_spend_usd;
         Self {
             governor,
             linter,
@@ -50,6 +54,7 @@ impl ProxyState {
             context_guard: Arc::new(crate::context_guard::ContextWindowGuard::default()),
             cache_engine: Arc::new(crate::cache_engine::CacheEngine::default()),
             fallback_engine: Arc::new(crate::fallback::LocalFallbackEngine::default()),
+            swarm_pool: Arc::new(crate::team::TeamBudgetPool::new(max_pool)),
         }
     }
 
@@ -59,6 +64,7 @@ impl ProxyState {
         secret_guard: Arc<SecretGuard>,
         ledger: Arc<crate::ledger::Ledger>,
     ) -> Self {
+        let max_pool = governor.status().max_spend_usd;
         Self {
             governor,
             linter,
@@ -67,6 +73,7 @@ impl ProxyState {
             context_guard: Arc::new(crate::context_guard::ContextWindowGuard::default()),
             cache_engine: Arc::new(crate::cache_engine::CacheEngine::default()),
             fallback_engine: Arc::new(crate::fallback::LocalFallbackEngine::default()),
+            swarm_pool: Arc::new(crate::team::TeamBudgetPool::new(max_pool)),
         }
     }
 }
@@ -89,7 +96,7 @@ pub fn create_proxy_router(state: Arc<ProxyState>) -> Router {
 
 async fn metrics_handler(State(state): State<Arc<ProxyState>>) -> impl IntoResponse {
     let status = state.governor.status();
-    let text = crate::metrics::MetricsExporter::render_prometheus(&status);
+    let text = crate::metrics::MetricsExporter::render_swarm_prometheus(&status, &state.swarm_pool);
     (
         [(axum::http::header::CONTENT_TYPE, "text/plain; version=0.0.4")],
         text,
@@ -110,8 +117,32 @@ async fn status_handler(State(state): State<Arc<ProxyState>>) -> impl IntoRespon
 
 async fn proxy_messages_handler(
     State(state): State<Arc<ProxyState>>,
+    headers: axum::http::HeaderMap,
     body: axum::body::Bytes,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let agent_id_opt = headers
+        .get("x-burnrate-agent-id")
+        .and_then(|h| h.to_str().ok())
+        .map(|s| s.to_string());
+    let agent_role = headers
+        .get("x-burnrate-agent-role")
+        .and_then(|h| h.to_str().ok())
+        .map(crate::team::AgentRole::parse)
+        .unwrap_or(crate::team::AgentRole::Worker);
+
+    if let Some(ref agent_id) = agent_id_opt {
+        let q = state.swarm_pool.enroll_or_get(agent_id, agent_role);
+        if q.is_exhausted {
+            return Err((
+                StatusCode::PAYMENT_REQUIRED,
+                format!(
+                    "burnrate: Swarm agent `{}` quota exhausted (${:.2} / ${:.2}). Execution paused.",
+                    agent_id, q.spent_usd, q.allocated_budget_usd
+                ),
+            ));
+        }
+    }
+
     // 1. Check if budget already tripped
     if state.governor.is_tripped() {
         let status = state.governor.status();
@@ -209,6 +240,14 @@ async fn proxy_messages_handler(
         pricing.calculate_cost(input_tokens, output_tokens, cache_read_tokens, cache_write_tokens)
     };
 
+    let mut swarm_exhausted = false;
+    if let Some(ref agent_id) = agent_id_opt {
+        let (agent_ex, pool_ex) = state.swarm_pool.record_spend_with_role(agent_id, agent_role, cost);
+        if agent_ex || pool_ex {
+            swarm_exhausted = true;
+        }
+    }
+
     let tripped = state.governor.record_turn(cost, input_tokens, output_tokens, cache_read_tokens);
     let status = state.governor.status();
     TerminalHud::display(&status);
@@ -222,12 +261,12 @@ async fn proxy_messages_handler(
             output_tokens,
             cache_read_tokens,
             redacted_count,
-            tripped,
+            tripped || swarm_exhausted,
         );
         let _ = ledger.record_session(&record);
     }
 
-    if tripped {
+    if tripped || swarm_exhausted {
         return Err((
             StatusCode::PAYMENT_REQUIRED,
             format!(
@@ -261,6 +300,18 @@ async fn proxy_messages_handler(
             axum::http::HeaderName::from_static("x-burnrate-fallback-active"),
             axum::http::HeaderValue::from_static("true"),
         );
+    }
+    #[allow(clippy::collapsible_if)]
+    if let Some(ref agent_id) = agent_id_opt {
+        if let Some(q) = state.swarm_pool.get_agent_quota(agent_id) {
+            let rem = (q.allocated_budget_usd - q.spent_usd).max(0.0);
+            if let Ok(val) = axum::http::HeaderValue::from_str(&format!("{:.4}", rem)) {
+                response_headers.insert(
+                    axum::http::HeaderName::from_static("x-burnrate-agent-remaining"),
+                    val,
+                );
+            }
+        }
     }
 
     Ok((

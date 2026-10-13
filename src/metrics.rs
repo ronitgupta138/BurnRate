@@ -49,4 +49,37 @@ impl MetricsExporter {
             if status.circuit_breaker_tripped { 1 } else { 0 }
         )
     }
+
+    /// Render Prometheus metrics enriched with Swarm Fleet data.
+    pub fn render_swarm_prometheus(
+        status: &BudgetStatus,
+        swarm: &crate::team::TeamBudgetPool,
+    ) -> String {
+        let mut out = Self::render_prometheus(status);
+        let s = swarm.swarm_status();
+
+        out.push_str(&format!(
+            "\n# HELP burnrate_swarm_pool_usd Total shared team budget pool in USD\n\
+             # TYPE burnrate_swarm_pool_usd gauge\n\
+             burnrate_swarm_pool_usd {:.2}\n\
+             \n\
+             # HELP burnrate_swarm_spent_usd Total spend consumed by swarm agents in USD\n\
+             # TYPE burnrate_swarm_spent_usd counter\n\
+             burnrate_swarm_spent_usd {:.6}\n\
+             \n\
+             # HELP burnrate_swarm_agents_registered Total registered agents in swarm\n\
+             # TYPE burnrate_swarm_agents_registered gauge\n\
+             burnrate_swarm_agents_registered {}\n\
+             \n\
+             # HELP burnrate_swarm_pool_exhausted 1 if team pool exhausted, 0 otherwise\n\
+             # TYPE burnrate_swarm_pool_exhausted gauge\n\
+             burnrate_swarm_pool_exhausted {}\n",
+            s.total_pool_usd,
+            s.total_spent_usd,
+            s.registered_agents_count,
+            if s.pool_exhausted { 1 } else { 0 }
+        ));
+
+        out
+    }
 }
