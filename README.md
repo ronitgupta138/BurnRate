@@ -12,10 +12,10 @@
 ### **Terminal HUD, Hard Spend Caps & Cache Guard for Coding Agents**
 
 [![GitHub Stars](https://img.shields.io/github/stars/ronitgupta138/burnrate?style=flat-square&color=0891b2&labelColor=0a0b0e)](https://github.com/ronitgupta138/burnrate/stargazers)
-[![Crates.io](https://img.shields.io/badge/crates.io-v1.4.0-0891b2?style=flat-square&labelColor=0a0b0e)](https://crates.io/crates/burnrate-agent)
+[![Crates.io](https://img.shields.io/badge/crates.io-v1.5.0-0891b2?style=flat-square&labelColor=0a0b0e)](https://crates.io/crates/burnrate-agent)
 [![License: MIT](https://img.shields.io/badge/License-MIT-0891b2?style=flat-square&labelColor=0a0b0e)](LICENSE)
 [![Rust: 1.80+](https://img.shields.io/badge/Rust-1.80+-0891b2?style=flat-square&labelColor=0a0b0e)](https://www.rust-lang.org)
-[![Build Status](https://img.shields.io/badge/Tests-26%2F26%20Passing-0891b2?style=flat-square&labelColor=0a0b0e)](#-verification--benchmarks)
+[![Build Status](https://img.shields.io/badge/Tests-28%2F28%20Passing-0891b2?style=flat-square&labelColor=0a0b0e)](#-verification--benchmarks)
 [![Views](https://hits.sh/github.com/ronitgupta138/burnrate.svg?style=flat-square&label=Views&color=0891b2&labelColor=0a0b0e)](https://hits.sh/github.com/ronitgupta138/burnrate/)
 [![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4-ea4aaa?style=flat-square&labelColor=0a0b0e)](https://github.com/sponsors/ronitgupta138)
 
@@ -148,7 +148,7 @@ cargo test
 ```
 
 ```
-running 26 tests
+running 28 tests
 test adapter::tests::test_openai_to_anthropic_response_translation ... ok
 test adapter::tests::test_anthropic_to_openai_translation ... ok
 test cache_engine::tests::test_cache_breakpoint_injection_on_large_system_prompt ... ok
@@ -179,10 +179,12 @@ test test_model_cost_router_downgrade_on_low_budget ... ok
 test test_proxy_secret_redaction_header_and_body ... ok
 test test_secret_guard_all_credential_types ... ok
 test test_streaming_token_counter_ingestion ... ok
+test test_swarm_role_partitioning_and_summary ... ok
+test test_proxy_multi_agent_swarm_header_enforcement ... ok
 test test_team_budget_pool_multi_agent_partitioning ... ok
 test test_velocity_brake_threshold_enforcement ... ok
 
-test result: ok. 26 passed; 0 failed; 0 ignored; finished in 0.01s
+test result: ok. 28 passed; 0 failed; 0 ignored; finished in 0.01s
 ```
 
 ---
