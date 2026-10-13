@@ -16,7 +16,7 @@ use std::sync::Arc;
 #[command(
     name = "burnrate",
     author = "Ronit Gupta <ronitgupta138@gmail.com>",
-    version = "1.3.0",
+    version = "1.4.0",
     about = "Terminal HUD, Hard Spend Caps & Cache Guard for Coding Agents"
 )]
 struct Cli {
@@ -93,6 +93,9 @@ enum Commands {
         #[arg(default_value = ".")]
         path: std::path::PathBuf,
     },
+
+    /// List supported upstream providers, protocol adapters, and fallback mappings
+    Models,
 }
 
 #[tokio::main]
@@ -316,6 +319,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 println!("  Tip: burnrate will automatically truncate these or add them to .agentignore.");
                 println!();
             }
+        }
+
+        Commands::Models => {
+            println!();
+            println!("{}", "⚡ burnrate Universal Provider Bridge & Protocol Adapters".bold().cyan());
+            println!("============================================================");
+            println!("Supported Upstream Providers & Protocol Routing:");
+            println!("  • Anthropic API     :: /v1/messages         -> Claude 3.7 / 3.5 Sonnet, Opus, Haiku");
+            println!("  • OpenAI API        :: /v1/chat/completions -> GPT-4o, GPT-4o-mini, o1, o3-mini");
+            println!("  • DeepSeek API      :: /v1/chat/completions -> DeepSeek-V3, DeepSeek-R1");
+            println!("  • Local Ollama/vLLM :: /v1/chat/completions -> DeepSeek-R1-Distill, Qwen 2.5 ($0.00)");
+            println!();
+            println!("{}", "Automatic Protocol Normalization:".bold());
+            println!("  ✓ Bi-directional Schema Translation: Anthropic Messages <-> OpenAI ChatCompletions");
+            println!("  ✓ Dynamic Stream SSE Normalization");
+            println!("  ✓ Automated 95% Spend Local Offline Model Fallback");
+            println!();
         }
     }
 
