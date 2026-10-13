@@ -148,22 +148,30 @@ cargo test
 ```
 
 ```
-running 12 tests
-test test_pricing_calculation ... ok
+running 18 tests
+test config::tests::test_config_defaults_and_serialization ... ok
+test secret_guard::tests::test_secret_guard_unit ... ok
+test ledger::tests::test_ledger_record_and_summary ... ok
+test test_context_window_guard_thresholds ... ok
 test test_budget_governor_hard_spend_breaker ... ok
+test test_pricing_calculation ... ok
 test test_prompt_cache_invalidation_linter ... ok
 test test_terminal_hud_rendering ... ok
 test test_proxy_budget_enforcement_endpoint ... ok
+test test_config_load_and_serialization ... ok
+test test_ledger_record_and_summary_lifecycle ... ok
+test test_proxy_integration_records_to_ledger ... ok
 test test_mcp_initialize_and_tool_list ... ok
 test test_mcp_call_status_tool ... ok
-test test_streaming_token_counter_ingestion ... ok
-test test_context_window_guard_thresholds ... ok
+test test_prometheus_metrics_export ... ok
 test test_model_cost_router_downgrade_on_low_budget ... ok
+test test_proxy_secret_redaction_header_and_body ... ok
+test test_secret_guard_all_credential_types ... ok
+test test_streaming_token_counter_ingestion ... ok
 test test_team_budget_pool_multi_agent_partitioning ... ok
 test test_velocity_brake_threshold_enforcement ... ok
-test test_prometheus_metrics_export ... ok
 
-test result: ok. 12 passed; 0 failed; 0 ignored; finished in 0.00s
+test result: ok. 18 passed; 0 failed; 0 ignored; finished in 0.01s
 ```
 
 ---
