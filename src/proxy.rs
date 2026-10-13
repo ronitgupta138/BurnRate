@@ -21,6 +21,7 @@ pub struct ProxyState {
     pub ledger: Option<Arc<crate::ledger::Ledger>>,
     pub context_guard: Arc<crate::context_guard::ContextWindowGuard>,
     pub cache_engine: Arc<crate::cache_engine::CacheEngine>,
+    pub fallback_engine: Arc<crate::fallback::LocalFallbackEngine>,
 }
 
 impl ProxyState {
@@ -32,6 +33,7 @@ impl ProxyState {
             ledger: None,
             context_guard: Arc::new(crate::context_guard::ContextWindowGuard::default()),
             cache_engine: Arc::new(crate::cache_engine::CacheEngine::default()),
+            fallback_engine: Arc::new(crate::fallback::LocalFallbackEngine::default()),
         }
     }
 
@@ -47,6 +49,7 @@ impl ProxyState {
             ledger: None,
             context_guard: Arc::new(crate::context_guard::ContextWindowGuard::default()),
             cache_engine: Arc::new(crate::cache_engine::CacheEngine::default()),
+            fallback_engine: Arc::new(crate::fallback::LocalFallbackEngine::default()),
         }
     }
 
@@ -63,6 +66,7 @@ impl ProxyState {
             ledger: Some(ledger),
             context_guard: Arc::new(crate::context_guard::ContextWindowGuard::default()),
             cache_engine: Arc::new(crate::cache_engine::CacheEngine::default()),
+            fallback_engine: Arc::new(crate::fallback::LocalFallbackEngine::default()),
         }
     }
 }
@@ -181,6 +185,16 @@ async fn proxy_messages_handler(
         "standard-agent"
     };
 
+    let status_pre = state.governor.status();
+    let fallback = state.fallback_engine.evaluate(
+        status_pre.total_spent_usd,
+        status_pre.max_spend_usd,
+        model_name,
+    );
+    if fallback.is_fallback {
+        eprintln!("🔄 [burnrate Fallback] {}", fallback.reason);
+    }
+
     let pricing = PricingRegistry::lookup(model_name);
 
     // Simulated turn consumption metrics
@@ -189,7 +203,11 @@ async fn proxy_messages_handler(
     let cache_read_tokens = (input_tokens as f64 * 0.8) as u64;
     let cache_write_tokens = (input_tokens as f64 * 0.2) as u64;
 
-    let cost = pricing.calculate_cost(input_tokens, output_tokens, cache_read_tokens, cache_write_tokens);
+    let cost = if fallback.is_fallback {
+        0.0
+    } else {
+        pricing.calculate_cost(input_tokens, output_tokens, cache_read_tokens, cache_write_tokens)
+    };
 
     let tripped = state.governor.record_turn(cost, input_tokens, output_tokens, cache_read_tokens);
     let status = state.governor.status();
@@ -235,6 +253,12 @@ async fn proxy_messages_handler(
     if cache_injected {
         response_headers.insert(
             axum::http::HeaderName::from_static("x-burnrate-cache-injected"),
+            axum::http::HeaderValue::from_static("true"),
+        );
+    }
+    if fallback.is_fallback {
+        response_headers.insert(
+            axum::http::HeaderName::from_static("x-burnrate-fallback-active"),
             axum::http::HeaderValue::from_static("true"),
         );
     }

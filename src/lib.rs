@@ -16,3 +16,5 @@ pub mod secret_guard;
 pub mod ledger;
 pub mod config;
 pub mod cache_engine;
+pub mod adapter;
+pub mod fallback;
