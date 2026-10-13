@@ -16,7 +16,7 @@ use std::sync::Arc;
 #[command(
     name = "burnrate",
     author = "Ronit Gupta <ronitgupta138@gmail.com>",
-    version = "1.1.0",
+    version = "1.2.0",
     about = "Terminal HUD, Hard Spend Caps & Cache Guard for Coding Agents"
 )]
 struct Cli {
@@ -72,6 +72,20 @@ enum Commands {
         #[arg(long, default_value_t = 2.00)]
         max_spend: f64,
     },
+
+    /// View historical session ledger and spending analytics
+    History {
+        /// Maximum number of records to show (default: 10)
+        #[arg(long, default_value_t = 10)]
+        limit: usize,
+
+        /// Show cumulative spending summary across all historical sessions
+        #[arg(long)]
+        summary: bool,
+    },
+
+    /// Initialize configuration and detect installed coding agents
+    Init,
 }
 
 #[tokio::main]
@@ -84,7 +98,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let governor = Arc::new(BudgetGovernor::new(max_spend));
             let linter = Arc::new(PromptCacheLinter::new());
             let secret_guard = Arc::new(SecretGuard::new());
-            let state = Arc::new(ProxyState { governor, linter, secret_guard });
+            let ledger = Arc::new(burnrate::ledger::Ledger::new(burnrate::ledger::Ledger::default_path()));
+            let state = Arc::new(ProxyState::with_ledger(governor, linter, secret_guard, ledger));
 
             let app = create_proxy_router(state);
 
@@ -167,6 +182,57 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let stdin = std::io::stdin();
             let stdout = std::io::stdout();
             mcp.run_loop(stdin.lock(), stdout.lock())?;
+        }
+
+        Commands::History { limit, summary } => {
+            let ledger = burnrate::ledger::Ledger::new(burnrate::ledger::Ledger::default_path());
+            if summary {
+                let s = ledger.summary()?;
+                println!();
+                println!("{}", "⚡ burnrate Historical Ledger Summary".bold().cyan());
+                println!("==========================================");
+                println!("  Total Sessions:        {}", s.total_sessions);
+                println!("  Total Spend:           ${:.2} USD", s.total_spent_usd);
+                println!("  Input Tokens:          {}", s.total_input_tokens);
+                println!("  Output Tokens:         {}", s.total_output_tokens);
+                println!("  Cache Read Tokens:     {}", s.total_cache_read_tokens);
+                println!("  Avg Cache Hit Rate:    {:.1}%", s.avg_cache_hit_percent);
+                println!("  Secrets Redacted:      {}", s.total_secrets_redacted);
+                println!("  Tripped Sessions:      {}", s.tripped_sessions);
+                println!();
+            } else {
+                let records = ledger.list_records(limit)?;
+                println!();
+                println!("{}", "⚡ burnrate Recent Agent Sessions".bold().cyan());
+                println!("{}", burnrate::ledger::Ledger::render_table(&records));
+                println!();
+            }
+        }
+
+        Commands::Init => {
+            let cfg = burnrate::config::BurnrateConfig::load();
+            cfg.save()?;
+            println!();
+            println!("{}", "⚡ burnrate Initializer & Agent Detector".bold().cyan());
+            println!("==========================================");
+            println!("Configuration saved to: {}", burnrate::config::BurnrateConfig::default_path().display().to_string().green());
+            println!();
+            println!("{}", "Detected AI Coding Agents in PATH:".bold());
+            let detected = burnrate::config::BurnrateConfig::detect_installed_agents();
+            if detected.is_empty() {
+                println!("  (No standard agent CLIs detected in PATH yet)");
+            } else {
+                for agent in &detected {
+                    println!("  ✓ {: <10} :: {: <30} ({})", agent.binary.green().bold(), agent.name, agent.path.dimmed());
+                }
+            }
+            println!();
+            println!("{}", "Recommended Shell Aliases (add to ~/.bashrc or ~/.zshrc):".bold());
+            println!("  alias claude=\"burnrate run --max-spend {:.2} -- claude\"", cfg.default_max_spend);
+            println!("  alias cursor=\"burnrate run --max-spend {:.2} -- cursor\"", cfg.default_max_spend);
+            println!("  alias opencode=\"burnrate run --max-spend {:.2} -- opencode\"", cfg.default_max_spend);
+            println!("  alias aider=\"burnrate run --max-spend {:.2} -- aider\"", cfg.default_max_spend);
+            println!();
         }
     }
 

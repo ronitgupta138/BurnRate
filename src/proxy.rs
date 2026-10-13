@@ -18,6 +18,7 @@ pub struct ProxyState {
     pub governor: Arc<BudgetGovernor>,
     pub linter: Arc<PromptCacheLinter>,
     pub secret_guard: Arc<SecretGuard>,
+    pub ledger: Option<Arc<crate::ledger::Ledger>>,
 }
 
 impl ProxyState {
@@ -26,6 +27,7 @@ impl ProxyState {
             governor,
             linter,
             secret_guard: Arc::new(SecretGuard::new()),
+            ledger: None,
         }
     }
 
@@ -38,6 +40,21 @@ impl ProxyState {
             governor,
             linter,
             secret_guard,
+            ledger: None,
+        }
+    }
+
+    pub fn with_ledger(
+        governor: Arc<BudgetGovernor>,
+        linter: Arc<PromptCacheLinter>,
+        secret_guard: Arc<SecretGuard>,
+        ledger: Arc<crate::ledger::Ledger>,
+    ) -> Self {
+        Self {
+            governor,
+            linter,
+            secret_guard,
+            ledger: Some(ledger),
         }
     }
 }
@@ -141,6 +158,20 @@ async fn proxy_messages_handler(
     let tripped = state.governor.record_turn(cost, input_tokens, output_tokens, cache_read_tokens);
     let status = state.governor.status();
     TerminalHud::display(&status);
+
+    if let Some(ledger) = &state.ledger {
+        let record = crate::ledger::SessionRecord::new(
+            model_name,
+            cost,
+            status.max_spend_usd,
+            input_tokens,
+            output_tokens,
+            cache_read_tokens,
+            redacted_count,
+            tripped,
+        );
+        let _ = ledger.record_session(&record);
+    }
 
     if tripped {
         return Err((
