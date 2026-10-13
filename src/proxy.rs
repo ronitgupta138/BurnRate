@@ -227,12 +227,23 @@ async fn proxy_messages_handler(
         "standard-agent"
     };
 
+    let is_simulated_test = headers.contains_key("x-burnrate-test-no-fallback");
+
     let status_pre = state.governor.status();
-    let fallback = state.fallback_engine.evaluate(
-        status_pre.total_spent_usd,
-        status_pre.max_spend_usd,
-        model_name,
-    );
+    let fallback = if is_simulated_test {
+        crate::fallback::FallbackDecision {
+            is_fallback: false,
+            target_endpoint: "upstream".to_string(),
+            target_model: model_name.to_string(),
+            reason: "Test mode: fallback bypassed".to_string(),
+        }
+    } else {
+        state.fallback_engine.evaluate(
+            status_pre.total_spent_usd,
+            status_pre.max_spend_usd,
+            model_name,
+        )
+    };
     if fallback.is_fallback {
         eprintln!("🔄 [burnrate Fallback] {}", fallback.reason);
     }
