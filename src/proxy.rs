@@ -19,6 +19,8 @@ pub struct ProxyState {
     pub linter: Arc<PromptCacheLinter>,
     pub secret_guard: Arc<SecretGuard>,
     pub ledger: Option<Arc<crate::ledger::Ledger>>,
+    pub context_guard: Arc<crate::context_guard::ContextWindowGuard>,
+    pub cache_engine: Arc<crate::cache_engine::CacheEngine>,
 }
 
 impl ProxyState {
@@ -28,6 +30,8 @@ impl ProxyState {
             linter,
             secret_guard: Arc::new(SecretGuard::new()),
             ledger: None,
+            context_guard: Arc::new(crate::context_guard::ContextWindowGuard::default()),
+            cache_engine: Arc::new(crate::cache_engine::CacheEngine::default()),
         }
     }
 
@@ -41,6 +45,8 @@ impl ProxyState {
             linter,
             secret_guard,
             ledger: None,
+            context_guard: Arc::new(crate::context_guard::ContextWindowGuard::default()),
+            cache_engine: Arc::new(crate::cache_engine::CacheEngine::default()),
         }
     }
 
@@ -55,6 +61,8 @@ impl ProxyState {
             linter,
             secret_guard,
             ledger: Some(ledger),
+            context_guard: Arc::new(crate::context_guard::ContextWindowGuard::default()),
+            cache_engine: Arc::new(crate::cache_engine::CacheEngine::default()),
         }
     }
 }
@@ -113,10 +121,38 @@ async fn proxy_messages_handler(
         ));
     }
 
+    // Context optimization: truncate oversized artifacts (lockfiles, base64) and inject prompt-cache directives
+    let (body_after_context_opt, artifacts_truncated, cache_injected) = {
+        if let Ok(mut json_val) = serde_json::from_slice::<serde_json::Value>(&body) {
+            let trunc_stats = state.context_guard.sanitize_json(&mut json_val);
+            if trunc_stats.count_truncated > 0 {
+                eprintln!(
+                    "⚠️ [burnrate] Truncated {} oversized artifact(s), saved ~{} tokens",
+                    trunc_stats.count_truncated, trunc_stats.estimated_tokens_saved
+                );
+            }
+            let cache_report = state.cache_engine.optimize_anthropic_payload(&mut json_val);
+            if cache_report.breakpoint_injected {
+                eprintln!(
+                    "⚡ [burnrate] Injected prompt-cache breakpoint at {:?} (~{} cached tokens)",
+                    cache_report.target_location.unwrap_or("prompt"), cache_report.approximate_cached_tokens
+                );
+            }
+            if trunc_stats.count_truncated > 0 || cache_report.breakpoint_injected {
+                let bytes = serde_json::to_vec(&json_val).unwrap_or_else(|_| body.to_vec());
+                (axum::body::Bytes::from(bytes), trunc_stats.count_truncated, cache_report.breakpoint_injected)
+            } else {
+                (body, 0, false)
+            }
+        } else {
+            (body, 0, false)
+        }
+    };
+
     // Intercept and redact secrets from outbound prompt payload
     let (effective_body, body_str, redacted_count) = {
         let (sanitized_body_str, count) = {
-            let raw_body_str = String::from_utf8_lossy(&body);
+            let raw_body_str = String::from_utf8_lossy(&body_after_context_opt);
             state.secret_guard.redact(&raw_body_str)
         };
         if count > 0 {
@@ -126,8 +162,8 @@ async fn proxy_messages_handler(
             );
             (axum::body::Bytes::from(sanitized_body_str.clone()), sanitized_body_str, count)
         } else {
-            let owned_str = String::from_utf8_lossy(&body).into_owned();
-            (body, owned_str, 0)
+            let owned_str = String::from_utf8_lossy(&body_after_context_opt).into_owned();
+            (body_after_context_opt, owned_str, 0)
         }
     };
 
@@ -188,6 +224,18 @@ async fn proxy_messages_handler(
         response_headers.insert(
             axum::http::HeaderName::from_static("x-burnrate-secrets-redacted"),
             axum::http::HeaderValue::from(redacted_count),
+        );
+    }
+    if artifacts_truncated > 0 {
+        response_headers.insert(
+            axum::http::HeaderName::from_static("x-burnrate-artifacts-truncated"),
+            axum::http::HeaderValue::from(artifacts_truncated),
+        );
+    }
+    if cache_injected {
+        response_headers.insert(
+            axum::http::HeaderName::from_static("x-burnrate-cache-injected"),
+            axum::http::HeaderValue::from_static("true"),
         );
     }
 
