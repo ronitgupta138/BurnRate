@@ -16,7 +16,7 @@ use std::sync::Arc;
 #[command(
     name = "burnrate",
     author = "Ronit Gupta <ronitgupta138@gmail.com>",
-    version = "1.2.0",
+    version = "1.3.0",
     about = "Terminal HUD, Hard Spend Caps & Cache Guard for Coding Agents"
 )]
 struct Cli {
@@ -86,6 +86,13 @@ enum Commands {
 
     /// Initialize configuration and detect installed coding agents
     Init,
+
+    /// Analyze files/directories for token footprint and estimate multi-model spend
+    DryRun {
+        /// File or directory path to inspect (default: current directory)
+        #[arg(default_value = ".")]
+        path: std::path::PathBuf,
+    },
 }
 
 #[tokio::main]
@@ -233,6 +240,82 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("  alias opencode=\"burnrate run --max-spend {:.2} -- opencode\"", cfg.default_max_spend);
             println!("  alias aider=\"burnrate run --max-spend {:.2} -- aider\"", cfg.default_max_spend);
             println!();
+        }
+
+        Commands::DryRun { path } => {
+            println!();
+            println!("{}", "⚡ burnrate Pre-Flight Context Estimator".bold().cyan());
+            println!("==========================================");
+            if !path.exists() {
+                eprintln!("{}: Path does not exist: {}", "Error".red().bold(), path.display());
+                return Ok(());
+            }
+
+            let mut total_bytes: u64 = 0;
+            let mut file_count: usize = 0;
+            let mut danger_files: Vec<(String, u64)> = Vec::new();
+
+            fn scan_dir(dir: &std::path::Path, total_bytes: &mut u64, file_count: &mut usize, danger_files: &mut Vec<(String, u64)>) {
+                if let Ok(entries) = std::fs::read_dir(dir) {
+                    for entry in entries.flatten() {
+                        let p = entry.path();
+                        let name = p.file_name().and_then(|n| n.to_str()).unwrap_or("");
+                        if name.starts_with('.') || name == "target" || name == "node_modules" || name == "dist" || name == "__pycache__" {
+                            continue;
+                        }
+                        if p.is_dir() {
+                            scan_dir(&p, total_bytes, file_count, danger_files);
+                        } else if p.is_file() {
+                            let meta = match p.metadata() {
+                                Ok(m) => m,
+                                Err(_) => continue,
+                            };
+                            let len = meta.len();
+                            *total_bytes += len;
+                            *file_count += 1;
+                            if name == "package-lock.json" || name == "Cargo.lock" || name.ends_with(".min.js") || name.ends_with(".sqlite") || len > 200_000 {
+                                danger_files.push((p.display().to_string(), len));
+                            }
+                        }
+                    }
+                }
+            }
+
+            if path.is_file() {
+                if let Ok(meta) = path.metadata() {
+                    total_bytes = meta.len();
+                    file_count = 1;
+                    let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+                    if name == "package-lock.json" || name == "Cargo.lock" || total_bytes > 200_000 {
+                        danger_files.push((path.display().to_string(), total_bytes));
+                    }
+                }
+            } else {
+                scan_dir(&path, &mut total_bytes, &mut file_count, &mut danger_files);
+            }
+
+            let approx_tokens = total_bytes / 4;
+            println!("  Path Analyzed:      {}", path.display().to_string().green());
+            println!("  Files Scanned:      {}", file_count);
+            println!("  Total Size:         {:.2} KB ({} bytes)", total_bytes as f64 / 1024.0, total_bytes);
+            println!("  Estimated Tokens:   ~{} tokens", approx_tokens);
+            println!();
+            println!("{}", "Estimated Single-Turn Ingestion Cost:".bold());
+            let mtok = approx_tokens as f64 / 1_000_000.0;
+            println!("  • Claude 3.7 Sonnet:  ${:.4}  (warm cache: ${:.4})", mtok * 3.00, mtok * 0.30);
+            println!("  • Claude 3.5 Opus:    ${:.4}  (warm cache: ${:.4})", mtok * 15.00, mtok * 1.50);
+            println!("  • GPT-4o:             ${:.4}  (cached: ${:.4})", mtok * 2.50, mtok * 1.25);
+            println!("  • DeepSeek-V3:        ${:.4}  (cached: ${:.4})", mtok * 0.14, mtok * 0.014);
+            println!();
+
+            if !danger_files.is_empty() {
+                println!("{}", "⚠️  High-Token Danger Files Detected:".yellow().bold());
+                for (df, len) in &danger_files {
+                    println!("  - {: <45} ({:.1} KB, ~{} tokens)", df, *len as f64 / 1024.0, len / 4);
+                }
+                println!("  Tip: burnrate will automatically truncate these or add them to .agentignore.");
+                println!();
+            }
         }
     }
 
