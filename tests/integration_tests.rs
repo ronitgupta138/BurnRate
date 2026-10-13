@@ -74,7 +74,7 @@ async fn test_proxy_budget_enforcement_endpoint() {
     let governor = Arc::new(BudgetGovernor::new(0.01)); // tiny $0.01 cap
     let linter = Arc::new(PromptCacheLinter::new());
     let secret_guard = Arc::new(burnrate::secret_guard::SecretGuard::new());
-    let state = Arc::new(ProxyState { governor, linter, secret_guard });
+    let state = Arc::new(ProxyState::with_secret_guard(governor, linter, secret_guard));
 
     let app = create_proxy_router(state);
 

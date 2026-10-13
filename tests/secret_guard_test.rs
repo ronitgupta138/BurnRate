@@ -48,11 +48,11 @@ async fn test_proxy_secret_redaction_header_and_body() {
     let governor = Arc::new(BudgetGovernor::new(10.0));
     let linter = Arc::new(PromptCacheLinter::new());
     let secret_guard = Arc::new(SecretGuard::new());
-    let state = Arc::new(ProxyState {
+    let state = Arc::new(ProxyState::with_secret_guard(
         governor,
         linter,
         secret_guard,
-    });
+    ));
 
     let app = create_proxy_router(state);
 
