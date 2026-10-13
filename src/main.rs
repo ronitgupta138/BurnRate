@@ -16,7 +16,7 @@ use std::sync::Arc;
 #[command(
     name = "burnrate",
     author = "Ronit Gupta <ronitgupta138@gmail.com>",
-    version = "1.4.0",
+    version = "1.5.0",
     about = "Terminal HUD, Hard Spend Caps & Cache Guard for Coding Agents"
 )]
 struct Cli {
@@ -96,6 +96,13 @@ enum Commands {
 
     /// List supported upstream providers, protocol adapters, and fallback mappings
     Models,
+
+    /// Inspect or configure multi-agent swarm fleet governance
+    Swarm {
+        /// Total team pool budget in USD (default: 10.00)
+        #[arg(long, default_value_t = 10.00)]
+        total_pool: f64,
+    },
 }
 
 #[tokio::main]
@@ -335,6 +342,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("  ✓ Bi-directional Schema Translation: Anthropic Messages <-> OpenAI ChatCompletions");
             println!("  ✓ Dynamic Stream SSE Normalization");
             println!("  ✓ Automated 95% Spend Local Offline Model Fallback");
+            println!();
+        }
+
+        Commands::Swarm { total_pool } => {
+            let pool = burnrate::team::TeamBudgetPool::new(total_pool);
+            pool.allocate_agent_with_role("lead-architect", burnrate::team::AgentRole::Architect, total_pool * 0.50);
+            pool.allocate_agent_with_role("core-worker-1", burnrate::team::AgentRole::Worker, total_pool * 0.30);
+            pool.allocate_agent_with_role("test-runner", burnrate::team::AgentRole::Tester, total_pool * 0.15);
+            pool.allocate_agent_with_role("code-reviewer", burnrate::team::AgentRole::Reviewer, total_pool * 0.05);
+
+            let summary = pool.swarm_status();
+            println!();
+            println!("{}", "⚡ burnrate Multi-Agent Swarm Fleet Governance".bold().cyan());
+            println!("============================================================");
+            println!("  Total Swarm Pool:     ${:.2} USD", summary.total_pool_usd);
+            println!("  Allocated Agents:     {}", summary.registered_agents_count);
+            println!("  Pool Consumed:        ${:.2} ({:.1}%)", summary.total_spent_usd, summary.percent_consumed);
+            println!("  Pool Remaining:       ${:.2} USD", summary.remaining_pool_usd);
+            println!();
+            println!("{}", "Swarm Worker Quota Partitions:".bold());
+            println!("{}", pool.render_swarm_table());
+            println!();
+            println!("{}", "Pass headers in agent HTTP requests to route spend:".dimmed());
+            println!("  x-burnrate-agent-id:   <unique-agent-id>");
+            println!("  x-burnrate-agent-role: architect | worker | tester | reviewer");
             println!();
         }
     }
