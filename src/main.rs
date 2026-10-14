@@ -17,7 +17,8 @@ use std::sync::Arc;
     name = "burnrate",
     author = "Ronit Gupta <ronitgupta138@gmail.com>",
     version = "2.0.0",
-    about = "Terminal HUD, Hard Spend Caps & Cache Guard for Coding Agents"
+    about = "Terminal HUD, Hard Spend Caps & Cache Guard for Coding Agents",
+    after_help = "Built by independent maintainers · Sponsor development: https://github.com/sponsors/ronitgupta138"
 )]
 struct Cli {
     #[command(subcommand)]
@@ -148,6 +149,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "│".cyan(),
                 "Hard Cap".dimmed(),
                 format!("${:.2} USD (Auto-Kill Circuit Breaker)", max_spend).yellow().bold(),
+                "│".cyan()
+            );
+            println!(
+                "{}  {: <14} :: {: <50} {}",
+                "│".cyan(),
+                "Sponsor".dimmed(),
+                "https://github.com/sponsors/ronitgupta138".magenta(),
                 "│".cyan()
             );
             println!("{}", "└────────────────────────────────────────────────────────────────────────┘".cyan());

@@ -195,6 +195,20 @@ test result: ok. 31 passed; 0 failed; 0 ignored; finished in 0.01s
 
 ---
 
+## 💖 Sponsoring & Supporting Development
+
+`burnrate` is an independent open-source project built to protect developers, teams, and autonomous agent harnesses from accidental $100+ API bill explosions and silent prompt-cache invalidation leaks.
+
+If `burnrate` has saved your team from runaway token invoices or improved your agent infrastructure, consider **[sponsoring development on GitHub](https://github.com/sponsors/ronitgupta138)**:
+
+* **☕ Backers ($5–$10/mo):** Named credit in official release notes and README backer roll.
+* **⚡ Power Users & Teams ($25/mo):** Direct influence on roadmap RFCs and priority feature triage.
+* **🏢 Organization Sponsors ($100/mo):** Prominent company logo and link displayed on README and dashboard.
+
+👉 **[Become a GitHub Sponsor](https://github.com/sponsors/ronitgupta138)**
+
+---
+
 ## 📜 License
 
 MIT License. Designed and engineered by [Ronit Gupta](https://github.com/ronitgupta138).
