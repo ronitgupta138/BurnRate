@@ -11,7 +11,7 @@
 
 ### **Terminal HUD, Hard Spend Caps & Cache Guard for Coding Agents**
 
-[![GitHub Stars](https://img.shields.io/github/stars/ronitgupta138/burnrate?style=flat-square&color=0891b2&labelColor=0a0b0e)](https://github.com/ronitgupta138/burnrate/stargazers)
+[![GitHub Stars](https://badgen.net/github/stars/ronitgupta138/burnrate?icon=github&color=0891b2)](https://github.com/ronitgupta138/burnrate/stargazers)
 [![Crates.io](https://img.shields.io/badge/crates.io-v2.0.0-0891b2?style=flat-square&labelColor=0a0b0e)](https://crates.io/crates/burnrate-agent)
 [![License: MIT](https://img.shields.io/badge/License-MIT-0891b2?style=flat-square&labelColor=0a0b0e)](LICENSE)
 [![Rust: 1.80+](https://img.shields.io/badge/Rust-1.80+-0891b2?style=flat-square&labelColor=0a0b0e)](https://www.rust-lang.org)
