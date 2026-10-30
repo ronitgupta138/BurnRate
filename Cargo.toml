@@ -18,7 +18,7 @@ anyhow = "1.0"
 chrono = { version = "0.4", features = ["serde"] }
 tokio = { version = "1.40", features = ["full"] }
 axum = { version = "0.7", features = ["macros"] }
-tower-http = { version = "0.5", features = ["cors", "trace"] }
+tower-http = { version = "0.7", features = ["cors", "trace"] }
 tower = { version = "0.4", features = ["util"] }
 http-body-util = "0.1"
 regex = "1.13.1"
