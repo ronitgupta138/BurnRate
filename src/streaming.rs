@@ -26,3 +26,19 @@ impl StreamingTokenCounter {
         (bytes / 4).max(1)
     }
 }
+
+/// Extract raw SSE data payloads without reallocating intermediate strings.
+pub fn extract_sse_data_lines(raw_stream: &[u8]) -> Vec<&[u8]> {
+    let mut lines = Vec::new();
+    for line in raw_stream.split(|&b| b == b'\n') {
+        let trimmed = if line.ends_with(b"\r") {
+            &line[..line.len() - 1]
+        } else {
+            line
+        };
+        if trimmed.starts_with(b"data: ") {
+            lines.push(&trimmed[6..]);
+        }
+    }
+    lines
+}
