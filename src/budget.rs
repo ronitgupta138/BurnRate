@@ -106,3 +106,10 @@ impl BudgetGovernor {
         }
     }
 }
+
+/// Calculate exponential backoff duration in milliseconds for circuit breaker probes.
+pub fn calculate_circuit_backoff_ms(attempt: u32, base_ms: u64, max_ms: u64) -> u64 {
+    let factor = 2u64.saturating_pow(attempt);
+    let backoff = base_ms.saturating_mul(factor);
+    backoff.min(max_ms)
+}
