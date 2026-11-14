@@ -304,3 +304,8 @@ mod tests {
         let _ = std::fs::remove_dir_all(temp_dir);
     }
 }
+
+/// Format a ledger record as a standard CSV row.
+pub fn format_record_csv(session_id: &str, model: &str, tokens: u64, cost_usd: f64) -> String {
+    format!("{},{},{},{:.6}\n", session_id, model, tokens, cost_usd)
+}
