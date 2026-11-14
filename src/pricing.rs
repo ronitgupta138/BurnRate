@@ -50,10 +50,33 @@ impl ModelPricing {
 pub struct PricingRegistry;
 
 impl PricingRegistry {
+    /// Check if a model is served locally (Ollama/vLLM) with zero token cost.
+    pub fn is_local(model: &str) -> bool {
+        let m = model.to_lowercase();
+        m.contains("ollama") || m.contains("local") || m.contains("qwen") || m.contains("llama") || m.contains("mistral-local")
+    }
+
+    /// List all standard known model identifiers.
+    pub fn list_supported_models() -> Vec<&'static str> {
+        vec![
+            "claude-opus",
+            "claude-sonnet",
+            "claude-haiku",
+            "gpt-4o",
+            "gpt-4o-mini",
+            "o3-mini",
+            "deepseek-v3",
+            "deepseek-r1",
+            "local-qwen",
+        ]
+    }
+
     /// Look up pricing table for model name (fuzzy match).
     pub fn lookup(model: &str) -> ModelPricing {
         let m = model.to_lowercase();
-        if m.contains("opus") {
+        if Self::is_local(&m) {
+            ModelPricing::new("local-model", 0.0, 0.0, 0.0, 0.0)
+        } else if m.contains("opus") {
             // Claude 3.5 / 4.5 Opus ($15/$75)
             ModelPricing::new("claude-opus", 15.0, 75.0, 1.5, 18.75)
         } else if m.contains("sonnet") {
@@ -62,12 +85,18 @@ impl PricingRegistry {
         } else if m.contains("haiku") {
             // Claude 3.5 Haiku ($0.80/$4)
             ModelPricing::new("claude-haiku", 0.80, 4.0, 0.08, 1.0)
+        } else if m.contains("o3-mini") {
+            // OpenAI o3-mini ($1.10/$4.40)
+            ModelPricing::new("o3-mini", 1.10, 4.40, 0.55, 1.10)
         } else if m.contains("gpt-4o-mini") {
             // GPT-4o-mini ($0.15/$0.60)
             ModelPricing::new("gpt-4o-mini", 0.15, 0.60, 0.075, 0.15)
         } else if m.contains("gpt-4o") || m.contains("gpt-4") {
             // GPT-4o ($2.50/$10)
             ModelPricing::new("gpt-4o", 2.50, 10.0, 1.25, 2.50)
+        } else if m.contains("deepseek-r1") || m.contains("r1") {
+            // DeepSeek-R1 ($0.55/$2.19)
+            ModelPricing::new("deepseek-r1", 0.55, 2.19, 0.14, 0.55)
         } else if m.contains("deepseek") {
             // DeepSeek-V3 ($0.14/$0.28)
             ModelPricing::new("deepseek-v3", 0.14, 0.28, 0.014, 0.14)
