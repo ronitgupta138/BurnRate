@@ -22,3 +22,4 @@ pub mod policy;
 pub mod vault;
 pub mod web;
 pub mod daily_spend;
+pub mod spike_detector;
