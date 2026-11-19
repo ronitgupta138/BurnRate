@@ -21,3 +21,4 @@ pub mod fallback;
 pub mod policy;
 pub mod vault;
 pub mod web;
+pub mod daily_spend;
