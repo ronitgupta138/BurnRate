@@ -23,3 +23,4 @@ pub mod vault;
 pub mod web;
 pub mod daily_spend;
 pub mod spike_detector;
+pub mod linear_forecast;
