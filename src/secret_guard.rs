@@ -128,6 +128,17 @@ impl Clone for SecretGuard {
     }
 }
 
+/// Mask an API key or auth token while keeping the first 3 and last 4 characters visible.
+pub fn mask_credential_token(token: &str) -> String {
+    let trimmed = token.trim();
+    if trimmed.len() <= 8 {
+        return "[REDACTED]".to_string();
+    }
+    let prefix = &trimmed[..3];
+    let suffix = &trimmed[trimmed.len() - 4..];
+    format!("{}...{}", prefix, suffix)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -139,15 +150,4 @@ mod tests {
         assert_eq!(count, 1);
         assert_eq!(redacted, "key: [REDACTED_BY_BURNRATE:AWS_ACCESS_KEY_ID]");
     }
-}
-
-/// Mask an API key or auth token while keeping the first 3 and last 4 characters visible.
-pub fn mask_credential_token(token: &str) -> String {
-    let trimmed = token.trim();
-    if trimmed.len() <= 8 {
-        return "[REDACTED]".to_string();
-    }
-    let prefix = &trimmed[..3];
-    let suffix = &trimmed[trimmed.len() - 4..];
-    format!("{}...{}", prefix, suffix)
 }
