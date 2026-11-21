@@ -22,6 +22,7 @@ tower-http = { version = "0.5", features = ["cors", "trace"] }
 tower = { version = "0.4", features = ["util"] }
 http-body-util = "0.1"
 regex = "1.13.1"
+llm-prices = "1.8.0"
 
 [[bin]]
 name = "burnrate"

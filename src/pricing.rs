@@ -71,13 +71,45 @@ impl PricingRegistry {
         ]
     }
 
-    /// Look up pricing table for model name (fuzzy match).
+    /// Exact, dated list price for a concrete model id, from the `llm-prices` table.
+    ///
+    /// Resolves dated snapshots (`claude-opus-4-5-20251101`), provider prefixes
+    /// (`anthropic/`, `openai/`, `bedrock/`, `groq/`, ...) and Bedrock ids. Returns `None` for
+    /// family names (`claude-sonnet`) and for models the table does not price, so the caller
+    /// can fall back to the family table below.
+    pub fn lookup_exact(model: &str) -> Option<ModelPricing> {
+        let p = llm_prices::lookup(model)?;
+        let input = p.input?;
+        let output = p.output?;
+        // Providers that do not bill cache reads or writes separately charge the input rate.
+        let cache_read = p.cache_read.unwrap_or(input);
+        let cache_write = p.cache_write("5m").unwrap_or(input);
+        Some(ModelPricing::new(
+            p.model,
+            input,
+            output,
+            cache_read,
+            cache_write,
+        ))
+    }
+
+    /// Look up pricing for a model name.
+    ///
+    /// A concrete model id gets its exact list price (see [`Self::lookup_exact`]); explicit
+    /// local endpoints (`ollama/...`, `local-...`) cost nothing; anything else falls back to the
+    /// family match.
     pub fn lookup(model: &str) -> ModelPricing {
         let m = model.to_lowercase();
+        if m.contains("ollama") || m.contains("local") {
+            return ModelPricing::new("local-model", 0.0, 0.0, 0.0, 0.0);
+        }
+        if let Some(exact) = Self::lookup_exact(&m) {
+            return exact;
+        }
         if Self::is_local(&m) {
             ModelPricing::new("local-model", 0.0, 0.0, 0.0, 0.0)
         } else if m.contains("opus") {
-            // Claude 3.5 / 4.5 Opus ($15/$75)
+            // Claude Opus 4 / 4.1 family ($15/$75); newer Opus ids resolve exactly above
             ModelPricing::new("claude-opus", 15.0, 75.0, 1.5, 18.75)
         } else if m.contains("sonnet") {
             // Claude 3.5 / 3.7 Sonnet ($3/$15)
